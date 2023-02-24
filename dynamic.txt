@@ -1,0 +1,53 @@
+import multiprocessing
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Define the Mandelbrot function
+def mandelbrot(x, y, max_iter):
+    c = x + y*1j
+    z = 0 + 0j
+    for i in range(max_iter):
+        z = z*z + c
+        if abs(z) > 2:
+            return i
+    return max_iter
+
+# Define the worker function for each sub-region
+def worker(subregion, max_iter):
+    x_min, x_max, y_min, y_max = subregion
+    w = x_max - x_min
+    h = y_max - y_min
+    result = np.zeros((h, w), dtype=int)
+    for i in range(h):
+        for j in range(w):
+            x = x_min + j/w*(x_max - x_min)
+            y = y_min + i/h*(y_max - y_min)
+            result[i, j] = mandelbrot(x, y, max_iter)
+    return result
+
+# Define the main function for generating the Mandelbrot set
+def mandelbrot_set(x_min, x_max, y_min, y_max, max_iter, num_procs):
+    pool = multiprocessing.Pool(processes=num_procs)
+    subregions = []
+    w = (x_max - x_min) / num_procs
+    for i in range(num_procs):
+        subregions.append([x_min + i*w, x_min + (i+1)*w, y_min, y_max])
+    results = pool.starmap(worker, [(subregion, max_iter) for subregion in subregions])
+    pool.close()
+    pool.join()
+    result = np.concatenate(results, axis=1)
+    return result
+
+# Set the parameters for generating the Mandelbrot set
+x_min, x_max = -2, 1
+y_min, y_max = -1, 1
+max_iter = 100
+num_procs = multiprocessing.cpu_count()
+
+# Generate the Mandelbrot set
+result = mandelbrot_set(x_min, x_max, y_min, y_max, max_iter, num_procs)
+
+# Plot the Mandelbrot set
+plt.imshow(result, cmap='hot', extent=[x_min, x_max, y_min, y_max])
+plt.axis('off')
+plt.show()

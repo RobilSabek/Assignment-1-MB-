@@ -1,0 +1,45 @@
+import numpy as np
+import multiprocessing as mp
+
+def mandelbrot(c, max_iter):
+    z = 0
+    for i in range(max_iter):
+        z = z*z + c
+        if abs(z) > 2:
+            return i
+    return max_iter
+
+def mandelbrot_set(x_min, x_max, y_min, y_max, w, h, max_iter, num_processes):
+    x_step = (x_max - x_min) / w
+    y_step = (y_max - y_min) / h
+    pool = mp.Pool(processes=num_processes)
+    results = []
+    for i in range(h):
+        row_results = pool.starmap(mandelbrot, [(complex(x_min + j*x_step, y_min + i*y_step), max_iter) for j in range(w)])
+        results.append(row_results)
+    pool.close()
+    pool.join()
+    return np.array(results)
+
+def write_to_file(filename, data):
+    with open(filename, 'w') as f:
+        np.savetxt(f, data, fmt='%d')
+
+if __name__ == '__main__':
+    # Set the parameters for generating the Mandelbrot set
+    x_min, x_max = -2, 1
+    y_min, y_max = -1, 1
+    w, h = 600, 400
+    max_iter = 100
+    num_processes = mp.cpu_count()
+
+    # Generate the Mandelbrot set
+    start_time = mp.current_process()._bootstrap_inner()
+    result = mandelbrot_set(x_min, x_max, y_min, y_max, w, h, max_iter, num_processes)
+    end_time = mp.current_process()._bootstrap_inner()
+
+    # Write the Mandelbrot set to a file
+    write_to_file('mandelbrot.txt', result)
+
+    # Print the elapsed time
+    print(f'Elapsed time: {end_time - start_time:.2f} seconds')
